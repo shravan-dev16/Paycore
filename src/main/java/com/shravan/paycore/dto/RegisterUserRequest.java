@@ -1,9 +1,17 @@
 package com.shravan.paycore.dto;
 
-public class RegisterUserRequest {
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
+public class RegisterUserRequest {
+    @NotBlank
     private String name;
+    @NotBlank
+    @Email
     private String email;
+    @NotBlank
+    @Size(min = 8)
     private String password;
 
     public RegisterUserRequest() {

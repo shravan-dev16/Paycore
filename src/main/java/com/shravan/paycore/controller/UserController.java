@@ -3,6 +3,7 @@ package com.shravan.paycore.controller;
 import com.shravan.paycore.dto.RegisterUserRequest;
 import com.shravan.paycore.dto.UserResponse;
 import com.shravan.paycore.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +19,8 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<UserResponse> registerUser(@RequestBody RegisterUserRequest request) {
+    public ResponseEntity<UserResponse> registerUser(
+            @Valid @RequestBody RegisterUserRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.registerUser(request));
     }
 }
