@@ -5,6 +5,7 @@ import com.shravan.paycore.dto.UserResponse;
 import com.shravan.paycore.entity.User;
 import com.shravan.paycore.enums.Role;
 import com.shravan.paycore.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -13,31 +14,34 @@ import java.time.LocalDateTime;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder
+    ) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public UserResponse registerUser(RegisterUserRequest request) {
 
-        // Create User Entity
         User user = new User();
 
-        // DTO -> Entity Mapping
         user.setName(request.getName());
         user.setEmail(request.getEmail());
-        user.setPassword(request.getPassword());
 
-        // Server-controlled fields
+        user.setPassword(
+                passwordEncoder.encode(request.getPassword())
+        );
+
         user.setWalletBalance(0.0);
         user.setRole(Role.USER);
         user.setVerified(false);
         user.setCreatedAt(LocalDateTime.now());
 
-        // Save User
         User savedUser = userRepository.save(user);
 
-        // Entity -> DTO Mapping
         UserResponse response = new UserResponse();
         response.setId(savedUser.getId());
         response.setName(savedUser.getName());
