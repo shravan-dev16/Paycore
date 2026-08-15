@@ -1,4 +1,5 @@
 package com.shravan.paycore.controller;
+import com.shravan.paycore.dto.LoginRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import com.shravan.paycore.dto.RegisterUserRequest;
@@ -23,6 +24,12 @@ public class UserController {
     public ResponseEntity<UserResponse> registerUser(
             @Valid @RequestBody RegisterUserRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.registerUser(request));
+    }
+    @PostMapping("/login")
+    public ResponseEntity<UserResponse> loginUser(
+            @Valid @RequestBody LoginRequest request
+    ) {
+        return ResponseEntity.ok(userService.loginUser(request));
     }
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
