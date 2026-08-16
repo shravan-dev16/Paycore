@@ -1,5 +1,7 @@
 package com.shravan.paycore.service;
+
 import com.shravan.paycore.dto.LoginRequest;
+import com.shravan.paycore.dto.LoginResponse;
 import com.shravan.paycore.dto.RegisterUserRequest;
 import com.shravan.paycore.dto.UserResponse;
 import com.shravan.paycore.entity.User;
@@ -14,43 +16,19 @@ import java.time.LocalDateTime;
 
 @Service
 public class UserService {
-    public UserResponse loginUser(LoginRequest request) {
-
-        User user = userRepository
-                .findByEmail(request.getEmail())
-                .orElseThrow(() ->
-                        new InvalidCredentialsException("Invalid email or password"));
-        System.out.println("Email: " + request.getEmail());
-        System.out.println("Stored hash: " + user.getPassword());
-
-        System.out.println(
-                "Password matches: " +
-                        passwordEncoder.matches(
-                                request.getPassword(),
-                                user.getPassword()
-                        )
-        );
-        if(!passwordEncoder.matches(request.getPassword(),user.getPassword())){
-            throw new InvalidCredentialsException("Invalid email or password");
-        }
-        UserResponse response = new UserResponse();
-        response.setId(user.getId());
-        response.setName(user.getName());
-        response.setEmail(user.getEmail());
-
-        return response;
-
-    }
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public UserService(
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     public UserResponse registerUser(RegisterUserRequest request) {
@@ -78,6 +56,7 @@ public class UserService {
 
         return response;
     }
+
     public UserResponse getUserById(Long id) {
 
         User user = userRepository.findById(id)
@@ -91,5 +70,30 @@ public class UserService {
         response.setEmail(user.getEmail());
 
         return response;
+    }
+
+    public LoginResponse loginUser(LoginRequest request) {
+
+        User user = userRepository
+                .findByEmail(request.getEmail())
+                .orElseThrow(() ->
+                        new InvalidCredentialsException(
+                                "Invalid email or password"
+                        ));
+
+        boolean passwordMatches = passwordEncoder.matches(
+                request.getPassword(),
+                user.getPassword()
+        );
+
+        if (!passwordMatches) {
+            throw new InvalidCredentialsException(
+                    "Invalid email or password"
+            );
+        }
+
+        String token = jwtService.generateToken(user.getEmail());
+
+        return new LoginResponse(token);
     }
 }
