@@ -15,18 +15,16 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 public class SecurityConfig {
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    @Bean
-    public JwtAuthenticationFilter jwtAuthenticationFilter(
-            JwtService jwtService
-    ) {
-        return new JwtAuthenticationFilter(jwtService);
-    }
     @Bean
     public UserDetailsService userDetailsService(UserRepository userRepository) {
 
@@ -44,8 +42,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(
-            HttpSecurity http,
-            JwtAuthenticationFilter jwtAuthenticationFilter
+            HttpSecurity http
     ) throws Exception {
 
         http

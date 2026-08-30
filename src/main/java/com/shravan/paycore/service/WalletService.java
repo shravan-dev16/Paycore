@@ -39,14 +39,14 @@ public class WalletService {
     // =========================
     // GET WALLET
     // =========================
-
+    @Transactional
     public WalletResponse getWalletByUserId(Long userId) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() ->
                         new UserNotFoundException("User not found"));
 
-        Wallet wallet = walletRepository.findByUser(user)
+        Wallet wallet = walletRepository.findByUserForUpdate(user)
                 .orElseThrow(() ->
                         new RuntimeException("Wallet not found"));
 
@@ -72,7 +72,7 @@ public class WalletService {
 
         System.out.println(">>> USER FOUND: " + user.getEmail());
 
-        Wallet wallet = walletRepository.findByUser(user)
+        Wallet wallet = walletRepository.findByUserForUpdate(user)
                 .orElseThrow(() ->
                         new RuntimeException("Wallet not found"));
 
@@ -118,7 +118,7 @@ public class WalletService {
                 .orElseThrow(() ->
                         new UserNotFoundException("User not found"));
 
-        Wallet wallet = walletRepository.findByUser(user)
+        Wallet wallet = walletRepository.findByUserForUpdate(user)
                 .orElseThrow(() ->
                         new RuntimeException("Wallet not found"));
 

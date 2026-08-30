@@ -7,7 +7,9 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "wallets")
 public class Wallet {
-
+    @Version
+    @Column(nullable = false)
+    private Long version;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,23 +23,21 @@ public class Wallet {
 
     public Wallet() {
     }
-
     public Long getId() {
         return id;
     }
-
     public BigDecimal getBalance() {
         return balance;
     }
-
+    public Long getVersion() {
+        return version;
+    }
     public void setBalance(BigDecimal balance) {
         this.balance = balance;
     }
-
     public User getUser() {
         return user;
     }
-
     public void setUser(User user) {
         this.user = user;
     }
