@@ -5,18 +5,24 @@ import com.shravan.paycore.dto.LoginResponse;
 import com.shravan.paycore.dto.RegisterUserRequest;
 import com.shravan.paycore.dto.UserResponse;
 import com.shravan.paycore.entity.User;
+import com.shravan.paycore.entity.Wallet;
 import com.shravan.paycore.enums.Role;
 import com.shravan.paycore.exception.InvalidCredentialsException;
 import com.shravan.paycore.exception.UserNotFoundException;
 import com.shravan.paycore.repository.UserRepository;
+import com.shravan.paycore.repository.WalletRepository;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Service
 public class UserService {
 
+    private final WalletRepository walletRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -24,13 +30,16 @@ public class UserService {
     public UserService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            JwtService jwtService
+            JwtService jwtService,
+            WalletRepository walletRepository
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.walletRepository = walletRepository;
     }
 
+    @Transactional
     public UserResponse registerUser(RegisterUserRequest request) {
 
         User user = new User();
@@ -42,14 +51,21 @@ public class UserService {
                 passwordEncoder.encode(request.getPassword())
         );
 
-        user.setWalletBalance(0.0);
         user.setRole(Role.USER);
         user.setVerified(false);
         user.setCreatedAt(LocalDateTime.now());
 
         User savedUser = userRepository.save(user);
 
+        Wallet wallet = new Wallet();
+
+        wallet.setUser(savedUser);
+        wallet.setBalance(BigDecimal.ZERO);
+
+        walletRepository.save(wallet);
+
         UserResponse response = new UserResponse();
+
         response.setId(savedUser.getId());
         response.setName(savedUser.getName());
         response.setEmail(savedUser.getEmail());

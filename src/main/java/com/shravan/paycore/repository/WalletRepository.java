@@ -1,9 +1,12 @@
 package com.shravan.paycore.repository;
 
+import com.shravan.paycore.entity.User;
 import com.shravan.paycore.entity.Wallet;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface WalletRepository
-        extends JpaRepository<Wallet, Long> {
+import java.util.Optional;
 
+public interface WalletRepository extends JpaRepository<Wallet, Long> {
+
+    Optional<Wallet> findByUser(User user);
 }

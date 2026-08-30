@@ -20,8 +20,6 @@ public class User {
 
     private String password;
 
-    private double walletBalance;
-
     @Enumerated(EnumType.STRING)
     private Role role;
 
@@ -62,14 +60,6 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
-    }
-
-    public double getWalletBalance() {
-        return walletBalance;
-    }
-
-    public void setWalletBalance(double walletBalance) {
-        this.walletBalance = walletBalance;
     }
 
     public Role getRole() {
