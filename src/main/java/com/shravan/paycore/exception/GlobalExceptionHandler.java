@@ -90,5 +90,33 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.CONFLICT)
                 .body(response);
     }
+    @ExceptionHandler(DuplicateIdempotencyKeyException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateIdempotencyKey(
+            DuplicateIdempotencyKeyException ex
+    ) {
+        ErrorResponse response = new ErrorResponse(
+                409,
+                ex.getMessage(),
+                null
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(response);
+    }
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGenericException(
+            Exception ex
+    ) {
+        ErrorResponse response = new ErrorResponse(
+                500,
+                "An unexpected error occurred",
+                null
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(response);
+    }
 
 }

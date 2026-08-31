@@ -1,5 +1,5 @@
 package com.shravan.paycore.service;
-
+import com.shravan.paycore.exception.DuplicateIdempotencyKeyException;
 import com.shravan.paycore.dto.DepositRequest;
 import com.shravan.paycore.dto.TransferRequest;
 import com.shravan.paycore.dto.WalletResponse;
@@ -21,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class WalletService {
@@ -70,7 +69,10 @@ public class WalletService {
     // =========================
 
     @Transactional
-    public WalletResponse deposit(Long userId, DepositRequest request) {
+    public WalletResponse deposit(
+            Long userId,
+            DepositRequest request
+    ) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() ->
@@ -81,7 +83,8 @@ public class WalletService {
                         new RuntimeException("Wallet not found"));
 
         wallet.setBalance(
-                wallet.getBalance().add(request.getAmount())
+                wallet.getBalance()
+                        .add(request.getAmount())
         );
 
         walletRepository.save(wallet);
@@ -108,7 +111,10 @@ public class WalletService {
     // =========================
 
     @Transactional
-    public WalletResponse withdraw(Long userId, WithdrawRequest request) {
+    public WalletResponse withdraw(
+            Long userId,
+            WithdrawRequest request
+    ) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() ->
@@ -118,14 +124,17 @@ public class WalletService {
                 .orElseThrow(() ->
                         new RuntimeException("Wallet not found"));
 
-        if (wallet.getBalance().compareTo(request.getAmount()) < 0) {
+        if (wallet.getBalance()
+                .compareTo(request.getAmount()) < 0) {
+
             throw new InsufficientBalanceException(
                     "Insufficient wallet balance"
             );
         }
 
         wallet.setBalance(
-                wallet.getBalance().subtract(request.getAmount())
+                wallet.getBalance()
+                        .subtract(request.getAmount())
         );
 
         walletRepository.save(wallet);
@@ -158,14 +167,16 @@ public class WalletService {
             String idempotencyKey
     ) {
 
-        // 1. Check whether this request was already processed
+        // 1. Check whether this request
+        //    was already processed
 
         Optional<IdempotencyRecord> existingRecord =
                 idempotencyRecordRepository
                         .findByIdempotencyKey(idempotencyKey);
 
         if (existingRecord.isPresent()) {
-            throw new IllegalStateException(
+
+            throw new DuplicateIdempotencyKeyException(
                     "Request with this Idempotency-Key has already been processed"
             );
         }
@@ -175,46 +186,69 @@ public class WalletService {
 
         User sender = userRepository.findById(senderId)
                 .orElseThrow(() ->
-                        new UserNotFoundException("Sender not found"));
+                        new UserNotFoundException(
+                                "Sender not found"
+                        ));
 
 
         // 3. Find receiver
 
-        User receiver = userRepository.findById(request.getReceiverId())
+        User receiver = userRepository
+                .findById(request.getReceiverId())
                 .orElseThrow(() ->
-                        new UserNotFoundException("Receiver not found"));
+                        new UserNotFoundException(
+                                "Receiver not found"
+                        ));
 
 
-        // 4. Lock wallets in consistent order
-        //    This helps prevent deadlocks when two users
-        //    transfer to each other simultaneously.
+        // 4. Lock both wallets in a consistent order.
+        //
+        //    This prevents deadlocks when:
+        //
+        //    User 7 -> User 6
+        //
+        //    happens at the same time as:
+        //
+        //    User 6 -> User 7
 
         Wallet firstWallet;
         Wallet secondWallet;
 
         if (sender.getId() < receiver.getId()) {
 
-            firstWallet = walletRepository.findByUserForUpdate(sender)
+            firstWallet = walletRepository
+                    .findByUserForUpdate(sender)
                     .orElseThrow(() ->
-                            new RuntimeException("Sender wallet not found"));
+                            new RuntimeException(
+                                    "Sender wallet not found"
+                            ));
 
-            secondWallet = walletRepository.findByUserForUpdate(receiver)
+            secondWallet = walletRepository
+                    .findByUserForUpdate(receiver)
                     .orElseThrow(() ->
-                            new RuntimeException("Receiver wallet not found"));
+                            new RuntimeException(
+                                    "Receiver wallet not found"
+                            ));
 
         } else {
 
-            firstWallet = walletRepository.findByUserForUpdate(receiver)
+            firstWallet = walletRepository
+                    .findByUserForUpdate(receiver)
                     .orElseThrow(() ->
-                            new RuntimeException("Receiver wallet not found"));
+                            new RuntimeException(
+                                    "Receiver wallet not found"
+                            ));
 
-            secondWallet = walletRepository.findByUserForUpdate(sender)
+            secondWallet = walletRepository
+                    .findByUserForUpdate(sender)
                     .orElseThrow(() ->
-                            new RuntimeException("Sender wallet not found"));
+                            new RuntimeException(
+                                    "Sender wallet not found"
+                            ));
         }
 
 
-        // 5. Identify which locked wallet belongs to sender
+        // 5. Identify sender and receiver wallets
 
         Wallet senderWallet =
                 sender.getId() < receiver.getId()
@@ -244,10 +278,14 @@ public class WalletService {
 
         transaction.setAmount(request.getAmount());
         transaction.setType(TransactionType.TRANSFER);
-        transaction.changeStatus(TransactionStatus.PENDING);
+        transaction.changeStatus(
+                TransactionStatus.PENDING
+        );
         transaction.setSender(sender);
         transaction.setReceiver(receiver);
-        transaction.setCreatedAt(LocalDateTime.now());
+        transaction.setCreatedAt(
+                LocalDateTime.now()
+        );
 
         transactionRepository.save(transaction);
 
@@ -274,16 +312,20 @@ public class WalletService {
         walletRepository.save(receiverWallet);
 
 
-        // 11. Mark transaction completed
+        // 11. Transfer succeeded
+        //     PENDING -> COMPLETED
 
-        transaction.changeStatus(TransactionStatus.COMPLETED);
+        transaction.changeStatus(
+                TransactionStatus.COMPLETED
+        );
 
         transactionRepository.save(transaction);
 
 
         // 12. Store idempotency record
 
-        IdempotencyRecord record = new IdempotencyRecord();
+        IdempotencyRecord record =
+                new IdempotencyRecord();
 
         record.setIdempotencyKey(idempotencyKey);
         record.setTransactionId(transaction.getId());
@@ -292,7 +334,7 @@ public class WalletService {
         idempotencyRecordRepository.save(record);
 
 
-        // 13. Return updated sender wallet
+        // 13. Return sender's updated wallet
 
         return new WalletResponse(
                 senderWallet.getId(),

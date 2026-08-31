@@ -3,6 +3,8 @@ package com.shravan.paycore.controller;
 import com.shravan.paycore.dto.TransactionResponse;
 import com.shravan.paycore.service.TransactionService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
@@ -29,7 +31,12 @@ public class TransactionController {
     @GetMapping("/user/{userId}")
     public ResponseEntity<Page<TransactionResponse>> getTransactionsByUserId(
             @PathVariable Long userId,
-            Pageable pageable
+            @PageableDefault(
+                    size = 10,
+                    sort = "createdAt",
+                    direction = Sort.Direction.DESC
+            ) Pageable pageable
+
     ) {
 
         return ResponseEntity.ok(
