@@ -7,13 +7,14 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "wallets")
 public class Wallet {
-    @Version
+
     @Column(nullable = false)
-    private Long version;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    @Version
+    private Long version;
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal balance;
 

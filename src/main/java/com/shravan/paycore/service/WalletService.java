@@ -16,7 +16,8 @@ import com.shravan.paycore.repository.UserRepository;
 import com.shravan.paycore.repository.WalletRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import jakarta.persistence.OptimisticLockException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import java.time.LocalDateTime;
 
 @Service
@@ -46,7 +47,8 @@ public class WalletService {
                 .orElseThrow(() ->
                         new UserNotFoundException("User not found"));
 
-        Wallet wallet = walletRepository.findByUserForUpdate(user)
+        Wallet wallet = walletRepository.findByUser(user)
+                
                 .orElseThrow(() ->
                         new RuntimeException("Wallet not found"));
 
@@ -57,9 +59,9 @@ public class WalletService {
     }
 
 
-    // =========================
+
     // DEPOSIT
-    // =========================
+
 
     @Transactional
     public WalletResponse deposit(Long userId, DepositRequest request) {
@@ -157,26 +159,40 @@ public class WalletService {
 
     @Transactional
     public WalletResponse transfer(Long senderId, TransferRequest request) {
-
         // 1. Find sender
         User sender = userRepository.findById(senderId)
                 .orElseThrow(() ->
                         new UserNotFoundException("Sender not found"));
 
-        // 2. Find receiver
+// 2. Find receiver
         User receiver = userRepository.findById(request.getReceiverId())
                 .orElseThrow(() ->
                         new UserNotFoundException("Receiver not found"));
 
-        // 3. Find sender wallet
-        Wallet senderWallet = walletRepository.findByUser(sender)
-                .orElseThrow(() ->
-                        new RuntimeException("Sender wallet not found"));
+// 3. Lock both wallets in a consistent order
+        Wallet senderWallet;
+        Wallet receiverWallet;
 
-        // 4. Find receiver wallet
-        Wallet receiverWallet = walletRepository.findByUser(receiver)
-                .orElseThrow(() ->
-                        new RuntimeException("Receiver wallet not found"));
+        if (sender.getId() < receiver.getId()) {
+
+            senderWallet = walletRepository.findByUserForUpdate(sender)
+                    .orElseThrow(() ->
+                            new RuntimeException("Sender wallet not found"));
+
+            receiverWallet = walletRepository.findByUserForUpdate(receiver)
+                    .orElseThrow(() ->
+                            new RuntimeException("Receiver wallet not found"));
+
+        } else {
+
+            receiverWallet = walletRepository.findByUserForUpdate(receiver)
+                    .orElseThrow(() ->
+                            new RuntimeException("Receiver wallet not found"));
+
+            senderWallet = walletRepository.findByUserForUpdate(sender)
+                    .orElseThrow(() ->
+                            new RuntimeException("Sender wallet not found"));
+        }
 
         // 5. Check sender balance
         if (senderWallet.getBalance().compareTo(request.getAmount()) < 0) {
