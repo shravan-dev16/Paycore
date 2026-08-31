@@ -1,13 +1,14 @@
 package com.shravan.paycore.controller;
 
+import com.shravan.paycore.dto.DepositRequest;
 import com.shravan.paycore.dto.TransferRequest;
 import com.shravan.paycore.dto.WalletResponse;
 import com.shravan.paycore.dto.WithdrawRequest;
 import com.shravan.paycore.service.WalletService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.shravan.paycore.dto.DepositRequest;
-import jakarta.validation.Valid;
+
 @RestController
 @RequestMapping("/api/wallet")
 public class WalletController {
@@ -18,6 +19,10 @@ public class WalletController {
         this.walletService = walletService;
     }
 
+    // =========================
+    // GET WALLET
+    // =========================
+
     @GetMapping("/{userId}")
     public ResponseEntity<WalletResponse> getWallet(
             @PathVariable Long userId
@@ -26,6 +31,12 @@ public class WalletController {
                 walletService.getWalletByUserId(userId)
         );
     }
+
+
+    // =========================
+    // DEPOSIT
+    // =========================
+
     @PostMapping("/{userId}/deposit")
     public ResponseEntity<WalletResponse> deposit(
             @PathVariable Long userId,
@@ -35,6 +46,12 @@ public class WalletController {
                 walletService.deposit(userId, request)
         );
     }
+
+
+    // =========================
+    // WITHDRAW
+    // =========================
+
     @PostMapping("/{userId}/withdraw")
     public ResponseEntity<WalletResponse> withdraw(
             @PathVariable Long userId,
@@ -44,13 +61,27 @@ public class WalletController {
                 walletService.withdraw(userId, request)
         );
     }
+
+
+    // =========================
+    // TRANSFER
+    // =========================
+
     @PostMapping("/{userId}/transfer")
     public ResponseEntity<WalletResponse> transfer(
             @PathVariable Long userId,
+
+            @RequestHeader("Idempotency-Key")
+            String idempotencyKey,
+
             @Valid @RequestBody TransferRequest request
     ) {
         return ResponseEntity.ok(
-                walletService.transfer(userId, request)
+                walletService.transfer(
+                        userId,
+                        request,
+                        idempotencyKey
+                )
         );
     }
 }
