@@ -1,17 +1,19 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import Deposit from "./pages/Deposit";
 import Login from "./pages/Login";
-import ProtectedRoute from "./components/ProtectedRoute";
-import DashboardLayout from "./layouts/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
+import Transfer from "./pages/Transfer";
+import Withdraw from "./pages/Withdraw";
+import Transactions from "./pages/Transactions";
+import Register from "./pages/Register";
+import MainLayout from "./layouts/MainLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
+
 function App() {
     return (
         <Routes>
 
-            {/* Public */}
-            <Route
-                path="/"
-                element={<Navigate to="/login" replace />}
-            />
+            {/* Public routes */}
 
             <Route
                 path="/login"
@@ -20,13 +22,15 @@ function App() {
 
             <Route
                 path="/register"
-                element={<h1>Register</h1>}
+                element={<Register />}
             />
 
-            {/* Protected */}
+
+            {/* Protected routes */}
+
             <Route element={<ProtectedRoute />}>
 
-                <Route element={<DashboardLayout />}>
+                <Route element={<MainLayout />}>
 
                     <Route
                         path="/dashboard"
@@ -34,26 +38,36 @@ function App() {
                     />
 
                     <Route
+                        path="/deposit"
+                        element={<Deposit />}
+                    />
+
+                    <Route
                         path="/transfer"
-                        element={
-                            <h1 className="text-3xl font-bold">
-                                Transfer
-                            </h1>
-                        }
+                        element={<Transfer />}
+                    />
+
+                    <Route
+                        path="/withdraw"
+                        element={<Withdraw />}
                     />
 
                     <Route
                         path="/transactions"
-                        element={
-                            <h1 className="text-3xl font-bold">
-                                Transactions
-                            </h1>
-                        }
+                        element={<Transactions />}
                     />
 
                 </Route>
 
             </Route>
+
+
+            {/* Default route */}
+
+            <Route
+                path="*"
+                element={<Navigate to="/dashboard" replace />}
+            />
 
         </Routes>
     );

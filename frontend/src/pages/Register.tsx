@@ -1,48 +1,68 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { loginUser } from "../api/authApi";
+import { useNavigate } from "react-router-dom";
+import { registerUser } from "../api/registerApi";
 
-function Login() {
+function Register() {
     const navigate = useNavigate();
 
+    const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
-    const loginMutation = useMutation({
-        mutationFn: loginUser,
+    const registerMutation = useMutation({
+        mutationFn: registerUser,
 
-        onSuccess: (data) => {
-            localStorage.setItem("token", data.token);
-            localStorage.setItem("userId", data.userId.toString());
-
-            navigate("/dashboard");
+        onSuccess: () => {
+            navigate("/login");
         },
     });
 
     const handleSubmit = (event: FormEvent) => {
         event.preventDefault();
 
-        loginMutation.mutate({
+        registerMutation.mutate({
+            name,
             email,
             password,
         });
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="flex min-h-screen items-center justify-center bg-gray-100">
+
             <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
 
                 <h1 className="mb-2 text-3xl font-bold">
-                    Welcome to PayCore
+                    Create your PayCore account
                 </h1>
 
                 <p className="mb-6 text-gray-500">
-                    Login to your wallet
+                    Register to create your wallet.
                 </p>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form
+                    onSubmit={handleSubmit}
+                    className="space-y-4"
+                >
+
+                    <div>
+                        <label className="mb-1 block text-sm font-medium">
+                            Name
+                        </label>
+
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={(e) =>
+                                setName(e.target.value)
+                            }
+                            className="w-full rounded-lg border p-3 outline-none focus:ring-2"
+                            placeholder="Your name"
+                            required
+                        />
+                    </div>
 
                     <div>
                         <label className="mb-1 block text-sm font-medium">
@@ -52,7 +72,9 @@ function Login() {
                         <input
                             type="email"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(e) =>
+                                setEmail(e.target.value)
+                            }
                             className="w-full rounded-lg border p-3 outline-none focus:ring-2"
                             placeholder="you@example.com"
                             required
@@ -67,42 +89,48 @@ function Login() {
                         <input
                             type="password"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={(e) =>
+                                setPassword(e.target.value)
+                            }
                             className="w-full rounded-lg border p-3 outline-none focus:ring-2"
                             placeholder="••••••••"
                             required
                         />
                     </div>
 
-                    {loginMutation.isError && (
+                    {registerMutation.isError && (
                         <p className="text-sm text-red-600">
-                            Login failed. Please check your email and password.
+                            Registration failed. Please check your details.
                         </p>
                     )}
 
                     <button
                         type="submit"
-                        disabled={loginMutation.isPending}
+                        disabled={registerMutation.isPending}
                         className="w-full rounded-lg bg-black p-3 font-semibold text-white disabled:opacity-50"
                     >
-                        {loginMutation.isPending ? "Logging in..." : "Login"}
+                        {registerMutation.isPending
+                            ? "Creating account..."
+                            : "Create Account"}
                     </button>
 
                 </form>
+
                 <p className="mt-6 text-center text-sm text-gray-500">
-                    Don't have an account?{" "}
+                    Already have an account?{" "}
                     <button
                         type="button"
-                        onClick={() => navigate("/register")}
+                        onClick={() => navigate("/login")}
                         className="font-semibold text-black hover:underline"
                     >
-                        Create account
+                        Login
                     </button>
                 </p>
 
             </div>
+
         </div>
     );
 }
 
-export default Login;
+export default Register;

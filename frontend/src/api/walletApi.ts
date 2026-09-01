@@ -1,5 +1,9 @@
 import api from "./axios";
-import type { WalletResponse } from "../types/wallet";
+
+export interface WalletResponse {
+    id: number;
+    balance: number;
+}
 
 export const getWallet = async (
     userId: number
