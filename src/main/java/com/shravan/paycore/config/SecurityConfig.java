@@ -3,6 +3,7 @@ package com.shravan.paycore.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -13,7 +14,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
-
+import org.springframework.security.web.AuthenticationEntryPoint;
 @Configuration
 public class SecurityConfig {
 
@@ -23,6 +24,23 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
+    @Bean
+    public AuthenticationEntryPoint authenticationEntryPoint() {
+
+        return (request, response, authException) -> {
+
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            response.setContentType("application/json");
+
+            response.getWriter().write("""
+                {
+                    "status": 401,
+                    "message": "Authentication required",
+                    "errors": null
+                }
+                """);
+        };
+    }
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http

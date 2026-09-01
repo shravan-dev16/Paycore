@@ -29,14 +29,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
-        System.out.println(">>> AUTH HEADER: " + authHeader);
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+        String authHeader =
+                request.getHeader("Authorization");
+
+        if (authHeader != null &&
+                authHeader.startsWith("Bearer ")) {
 
             String jwt = authHeader.substring(7);
 
-            String username = jwtService.extractUsername(jwt);
-            System.out.println(">>> JWT USERNAME: " + username);
+            if (!jwtService.isTokenValid(jwt)) {
+
+                response.setStatus(
+                        HttpServletResponse.SC_UNAUTHORIZED
+                );
+
+                response.setContentType("application/json");
+
+                response.getWriter().write("""
+                        {
+                            "status": 401,
+                            "message": "Invalid or expired token",
+                            "errors": null
+                        }
+                        """);
+
+                return;
+            }
+
+            String username =
+                    jwtService.extractUsername(jwt);
+
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
                             username,
@@ -44,9 +66,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             new ArrayList<>()
                     );
 
-            SecurityContextHolder.getContext()
+            SecurityContextHolder
+                    .getContext()
                     .setAuthentication(authentication);
-            System.out.println(">>> AUTHENTICATION SET");
         }
 
         filterChain.doFilter(request, response);

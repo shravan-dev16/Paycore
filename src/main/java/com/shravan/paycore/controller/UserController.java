@@ -4,6 +4,8 @@ import com.shravan.paycore.dto.LoginRequest;
 import com.shravan.paycore.dto.LoginResponse;
 import com.shravan.paycore.dto.RegisterUserRequest;
 import com.shravan.paycore.dto.UserResponse;
+import com.shravan.paycore.entity.User;
+import com.shravan.paycore.service.AuthenticatedUserService;
 import com.shravan.paycore.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -15,14 +17,20 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final AuthenticatedUserService authenticatedUserService;
 
-    public UserController(UserService userService) {
+    public UserController(
+            UserService userService,
+            AuthenticatedUserService authenticatedUserService
+    ) {
         this.userService = userService;
+        this.authenticatedUserService = authenticatedUserService;
     }
 
     @PostMapping("/register")
     public ResponseEntity<UserResponse> registerUser(
-            @Valid @RequestBody RegisterUserRequest request) {
+            @Valid @RequestBody RegisterUserRequest request
+    ) {
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -31,7 +39,8 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> loginUser(
-            @Valid @RequestBody LoginRequest request) {
+            @Valid @RequestBody LoginRequest request
+    ) {
 
         return ResponseEntity
                 .ok(userService.loginUser(request));
@@ -39,9 +48,24 @@ public class UserController {
 
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUserById(
-            @PathVariable Long id) {
+            @PathVariable Long id
+    ) {
 
         return ResponseEntity
                 .ok(userService.getUserById(id));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserResponse> getCurrentUser() {
+
+        User user = authenticatedUserService.getCurrentUser();
+
+        UserResponse response = new UserResponse();
+
+        response.setId(user.getId());
+        response.setName(user.getName());
+        response.setEmail(user.getEmail());
+
+        return ResponseEntity.ok(response);
     }
 }

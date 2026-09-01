@@ -1,5 +1,5 @@
 package com.shravan.paycore.service;
-import com.shravan.paycore.exception.DuplicateIdempotencyKeyException;
+
 import com.shravan.paycore.dto.DepositRequest;
 import com.shravan.paycore.dto.TransferRequest;
 import com.shravan.paycore.dto.WalletResponse;
@@ -10,6 +10,7 @@ import com.shravan.paycore.entity.User;
 import com.shravan.paycore.entity.Wallet;
 import com.shravan.paycore.enums.TransactionStatus;
 import com.shravan.paycore.enums.TransactionType;
+import com.shravan.paycore.exception.DuplicateIdempotencyKeyException;
 import com.shravan.paycore.exception.InsufficientBalanceException;
 import com.shravan.paycore.exception.UserNotFoundException;
 import com.shravan.paycore.repository.IdempotencyRecordRepository;
@@ -25,6 +26,7 @@ import java.util.Optional;
 @Service
 public class WalletService {
 
+    private final AuthenticatedUserService authenticatedUserService;
     private final WalletRepository walletRepository;
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
@@ -34,12 +36,14 @@ public class WalletService {
             WalletRepository walletRepository,
             UserRepository userRepository,
             TransactionRepository transactionRepository,
-            IdempotencyRecordRepository idempotencyRecordRepository
+            IdempotencyRecordRepository idempotencyRecordRepository,
+            AuthenticatedUserService authenticatedUserService
     ) {
         this.walletRepository = walletRepository;
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
         this.idempotencyRecordRepository = idempotencyRecordRepository;
+        this.authenticatedUserService = authenticatedUserService;
     }
 
     // =========================
@@ -49,11 +53,17 @@ public class WalletService {
     @Transactional
     public WalletResponse getWalletByUserId(Long userId) {
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new UserNotFoundException("User not found"));
+        User authenticatedUser =
+                authenticatedUserService.getCurrentUser();
 
-        Wallet wallet = walletRepository.findByUser(user)
+        if (!authenticatedUser.getId().equals(userId)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "You are not authorized to access this wallet"
+            );
+        }
+
+        Wallet wallet = walletRepository
+                .findByUser(authenticatedUser)
                 .orElseThrow(() ->
                         new RuntimeException("Wallet not found"));
 
@@ -74,11 +84,19 @@ public class WalletService {
             DepositRequest request
     ) {
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new UserNotFoundException("User not found"));
+        User authenticatedUser =
+                authenticatedUserService.getCurrentUser();
 
-        Wallet wallet = walletRepository.findByUserForUpdate(user)
+        if (!authenticatedUser.getId().equals(userId)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "You are not authorized to access this wallet"
+            );
+        }
+
+        User user = authenticatedUser;
+
+        Wallet wallet = walletRepository
+                .findByUserForUpdate(user)
                 .orElseThrow(() ->
                         new RuntimeException("Wallet not found"));
 
@@ -116,11 +134,19 @@ public class WalletService {
             WithdrawRequest request
     ) {
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new UserNotFoundException("User not found"));
+        User authenticatedUser =
+                authenticatedUserService.getCurrentUser();
 
-        Wallet wallet = walletRepository.findByUserForUpdate(user)
+        if (!authenticatedUser.getId().equals(userId)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "You are not authorized to access this wallet"
+            );
+        }
+
+        User user = authenticatedUser;
+
+        Wallet wallet = walletRepository
+                .findByUserForUpdate(user)
                 .orElseThrow(() ->
                         new RuntimeException("Wallet not found"));
 
@@ -182,13 +208,21 @@ public class WalletService {
         }
 
 
-        // 2. Find sender
+        // 2. Get authenticated sender
 
-        User sender = userRepository.findById(senderId)
-                .orElseThrow(() ->
-                        new UserNotFoundException(
-                                "Sender not found"
-                        ));
+        User authenticatedUser =
+                authenticatedUserService.getCurrentUser();
+
+        System.out.println(">>> AUTHENTICATED USER ID: " + authenticatedUser.getId());
+        System.out.println(">>> REQUEST SENDER ID: " + senderId);
+
+        if (!authenticatedUser.getId().equals(senderId)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "You are not authorized to transfer from this wallet"
+            );
+        }
+
+        User sender = authenticatedUser;
 
 
         // 3. Find receiver
