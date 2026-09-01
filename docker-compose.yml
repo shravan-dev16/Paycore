@@ -1,0 +1,33 @@
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: paycore-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: qwerty123
+      MYSQL_DATABASE: paycore
+    volumes:
+      - paycore-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pqwerty123" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  paycore:
+    build: .
+    container_name: paycore-app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/paycore
+      DB_USERNAME: root
+      DB_PASSWORD: qwerty123
+      JWT_SECRET: your-super-secret-paycore-key-change-this-later
+    ports:
+      - "8080:8080"
+
+volumes:
+  paycore-mysql-data:
