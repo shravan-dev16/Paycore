@@ -2,12 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { getWallet } from "../api/walletApi";
 import { getTransactions } from "../api/transactionApi";
+import { useAuth } from "../hooks/useAuth";
 
 function Dashboard() {
 
     const navigate = useNavigate();
 
-    const userId = Number(localStorage.getItem("userId"));
+    const { data: user } = useAuth();
+
+    const userId = user?.id;
 
     const {
         data: wallet,
@@ -15,7 +18,7 @@ function Dashboard() {
         isError: walletError,
     } = useQuery({
         queryKey: ["wallet", userId],
-        queryFn: () => getWallet(userId),
+        queryFn: () => getWallet(userId!),
         enabled: !!userId,
     });
 
@@ -24,7 +27,7 @@ function Dashboard() {
         isLoading: transactionsLoading,
     } = useQuery({
         queryKey: ["transactions", userId, 0],
-        queryFn: () => getTransactions(userId, 0, 5),
+        queryFn: () => getTransactions(userId!, 0, 5),
         enabled: !!userId,
     });
 

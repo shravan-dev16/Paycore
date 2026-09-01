@@ -1,31 +1,34 @@
 package com.shravan.paycore.service;
 
-import com.shravan.paycore.dto.DepositRequest;
-import com.shravan.paycore.dto.TransferRequest;
-import com.shravan.paycore.dto.WalletResponse;
-import com.shravan.paycore.dto.WithdrawRequest;
+import com.shravan.paycore.dto.*;
 import com.shravan.paycore.entity.IdempotencyRecord;
+import com.shravan.paycore.entity.LedgerEntry;
 import com.shravan.paycore.entity.Transaction;
 import com.shravan.paycore.entity.User;
 import com.shravan.paycore.entity.Wallet;
+import com.shravan.paycore.enums.LedgerEntryType;
 import com.shravan.paycore.enums.TransactionStatus;
 import com.shravan.paycore.enums.TransactionType;
 import com.shravan.paycore.exception.DuplicateIdempotencyKeyException;
 import com.shravan.paycore.exception.InsufficientBalanceException;
 import com.shravan.paycore.exception.UserNotFoundException;
 import com.shravan.paycore.repository.IdempotencyRecordRepository;
+import com.shravan.paycore.repository.LedgerEntryRepository;
 import com.shravan.paycore.repository.TransactionRepository;
 import com.shravan.paycore.repository.UserRepository;
 import com.shravan.paycore.repository.WalletRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
 public class WalletService {
 
+    private final LedgerEntryRepository ledgerEntryRepository;
     private final AuthenticatedUserService authenticatedUserService;
     private final WalletRepository walletRepository;
     private final UserRepository userRepository;
@@ -37,14 +40,17 @@ public class WalletService {
             UserRepository userRepository,
             TransactionRepository transactionRepository,
             IdempotencyRecordRepository idempotencyRecordRepository,
+            LedgerEntryRepository ledgerEntryRepository,
             AuthenticatedUserService authenticatedUserService
     ) {
         this.walletRepository = walletRepository;
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
         this.idempotencyRecordRepository = idempotencyRecordRepository;
+        this.ledgerEntryRepository = ledgerEntryRepository;
         this.authenticatedUserService = authenticatedUserService;
     }
+
 
     // =========================
     // GET WALLET
@@ -57,7 +63,7 @@ public class WalletService {
                 authenticatedUserService.getCurrentUser();
 
         if (!authenticatedUser.getId().equals(userId)) {
-            throw new org.springframework.security.access.AccessDeniedException(
+            throw new AccessDeniedException(
                     "You are not authorized to access this wallet"
             );
         }
@@ -88,7 +94,7 @@ public class WalletService {
                 authenticatedUserService.getCurrentUser();
 
         if (!authenticatedUser.getId().equals(userId)) {
-            throw new org.springframework.security.access.AccessDeniedException(
+            throw new AccessDeniedException(
                     "You are not authorized to access this wallet"
             );
         }
@@ -100,12 +106,17 @@ public class WalletService {
                 .orElseThrow(() ->
                         new RuntimeException("Wallet not found"));
 
+        // 1. Update wallet balance
+
         wallet.setBalance(
                 wallet.getBalance()
                         .add(request.getAmount())
         );
 
         walletRepository.save(wallet);
+
+
+        // 2. Create transaction
 
         Transaction transaction = new Transaction();
 
@@ -116,6 +127,20 @@ public class WalletService {
         transaction.setCreatedAt(LocalDateTime.now());
 
         transactionRepository.save(transaction);
+
+
+        // 3. Create CREDIT ledger entry
+
+        LedgerEntry ledgerEntry = new LedgerEntry();
+
+        ledgerEntry.setTransaction(transaction);
+        ledgerEntry.setWallet(wallet);
+        ledgerEntry.setType(LedgerEntryType.CREDIT);
+        ledgerEntry.setAmount(request.getAmount());
+        ledgerEntry.setCreatedAt(LocalDateTime.now());
+
+        ledgerEntryRepository.save(ledgerEntry);
+
 
         return new WalletResponse(
                 wallet.getId(),
@@ -138,7 +163,7 @@ public class WalletService {
                 authenticatedUserService.getCurrentUser();
 
         if (!authenticatedUser.getId().equals(userId)) {
-            throw new org.springframework.security.access.AccessDeniedException(
+            throw new AccessDeniedException(
                     "You are not authorized to access this wallet"
             );
         }
@@ -150,6 +175,9 @@ public class WalletService {
                 .orElseThrow(() ->
                         new RuntimeException("Wallet not found"));
 
+
+        // 1. Check balance
+
         if (wallet.getBalance()
                 .compareTo(request.getAmount()) < 0) {
 
@@ -158,12 +186,18 @@ public class WalletService {
             );
         }
 
+
+        // 2. Update wallet balance
+
         wallet.setBalance(
                 wallet.getBalance()
                         .subtract(request.getAmount())
         );
 
         walletRepository.save(wallet);
+
+
+        // 3. Create transaction
 
         Transaction transaction = new Transaction();
 
@@ -174,6 +208,20 @@ public class WalletService {
         transaction.setCreatedAt(LocalDateTime.now());
 
         transactionRepository.save(transaction);
+
+
+        // 4. Create DEBIT ledger entry
+
+        LedgerEntry ledgerEntry = new LedgerEntry();
+
+        ledgerEntry.setTransaction(transaction);
+        ledgerEntry.setWallet(wallet);
+        ledgerEntry.setType(LedgerEntryType.DEBIT);
+        ledgerEntry.setAmount(request.getAmount());
+        ledgerEntry.setCreatedAt(LocalDateTime.now());
+
+        ledgerEntryRepository.save(ledgerEntry);
+
 
         return new WalletResponse(
                 wallet.getId(),
@@ -193,8 +241,7 @@ public class WalletService {
             String idempotencyKey
     ) {
 
-        // 1. Check whether this request
-        //    was already processed
+        // 1. Check idempotency
 
         Optional<IdempotencyRecord> existingRecord =
                 idempotencyRecordRepository
@@ -213,11 +260,8 @@ public class WalletService {
         User authenticatedUser =
                 authenticatedUserService.getCurrentUser();
 
-        System.out.println(">>> AUTHENTICATED USER ID: " + authenticatedUser.getId());
-        System.out.println(">>> REQUEST SENDER ID: " + senderId);
-
         if (!authenticatedUser.getId().equals(senderId)) {
-            throw new org.springframework.security.access.AccessDeniedException(
+            throw new AccessDeniedException(
                     "You are not authorized to transfer from this wallet"
             );
         }
@@ -235,15 +279,7 @@ public class WalletService {
                         ));
 
 
-        // 4. Lock both wallets in a consistent order.
-        //
-        //    This prevents deadlocks when:
-        //
-        //    User 7 -> User 6
-        //
-        //    happens at the same time as:
-        //
-        //    User 6 -> User 7
+        // 4. Lock both wallets in consistent order
 
         Wallet firstWallet;
         Wallet secondWallet;
@@ -282,7 +318,7 @@ public class WalletService {
         }
 
 
-        // 5. Identify sender and receiver wallets
+        // 5. Identify wallets
 
         Wallet senderWallet =
                 sender.getId() < receiver.getId()
@@ -295,7 +331,7 @@ public class WalletService {
                         : firstWallet;
 
 
-        // 6. Check sender balance
+        // 6. Check balance
 
         if (senderWallet.getBalance()
                 .compareTo(request.getAmount()) < 0) {
@@ -312,11 +348,14 @@ public class WalletService {
 
         transaction.setAmount(request.getAmount());
         transaction.setType(TransactionType.TRANSFER);
+
         transaction.changeStatus(
                 TransactionStatus.PENDING
         );
+
         transaction.setSender(sender);
         transaction.setReceiver(receiver);
+
         transaction.setCreatedAt(
                 LocalDateTime.now()
         );
@@ -340,13 +379,39 @@ public class WalletService {
         );
 
 
-        // 10. Save both wallets
+        // 10. Save wallets
 
         walletRepository.save(senderWallet);
         walletRepository.save(receiverWallet);
 
 
-        // 11. Transfer succeeded
+        // 11. Create sender DEBIT ledger entry
+
+        LedgerEntry senderLedger = new LedgerEntry();
+
+        senderLedger.setTransaction(transaction);
+        senderLedger.setWallet(senderWallet);
+        senderLedger.setType(LedgerEntryType.DEBIT);
+        senderLedger.setAmount(request.getAmount());
+        senderLedger.setCreatedAt(LocalDateTime.now());
+
+        ledgerEntryRepository.save(senderLedger);
+
+
+        // 12. Create receiver CREDIT ledger entry
+
+        LedgerEntry receiverLedger = new LedgerEntry();
+
+        receiverLedger.setTransaction(transaction);
+        receiverLedger.setWallet(receiverWallet);
+        receiverLedger.setType(LedgerEntryType.CREDIT);
+        receiverLedger.setAmount(request.getAmount());
+        receiverLedger.setCreatedAt(LocalDateTime.now());
+
+        ledgerEntryRepository.save(receiverLedger);
+
+
+        // 13. Transfer succeeded
         //     PENDING -> COMPLETED
 
         transaction.changeStatus(
@@ -356,7 +421,7 @@ public class WalletService {
         transactionRepository.save(transaction);
 
 
-        // 12. Store idempotency record
+        // 14. Store idempotency record
 
         IdempotencyRecord record =
                 new IdempotencyRecord();
@@ -368,11 +433,44 @@ public class WalletService {
         idempotencyRecordRepository.save(record);
 
 
-        // 13. Return sender's updated wallet
+        // 15. Return sender wallet
 
         return new WalletResponse(
                 senderWallet.getId(),
                 senderWallet.getBalance()
+        );
+    }
+    @Transactional(readOnly = true)
+    public WalletConsistencyResponse checkWalletConsistency(Long userId) {
+
+        User authenticatedUser =
+                authenticatedUserService.getCurrentUser();
+
+        if (!authenticatedUser.getId().equals(userId)) {
+            throw new AccessDeniedException(
+                    "You are not authorized to access this wallet"
+            );
+        }
+
+        Wallet wallet = walletRepository
+                .findByUser(authenticatedUser)
+                .orElseThrow(() ->
+                        new RuntimeException("Wallet not found"));
+
+        BigDecimal ledgerBalance =
+                ledgerEntryRepository.calculateBalance(
+                        wallet.getId(),
+                        LedgerEntryType.CREDIT
+                );
+
+        boolean consistent =
+                wallet.getBalance().compareTo(ledgerBalance) == 0;
+
+        return new WalletConsistencyResponse(
+                wallet.getId(),
+                wallet.getBalance(),
+                ledgerBalance,
+                consistent
         );
     }
 }

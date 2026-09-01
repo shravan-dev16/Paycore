@@ -14,7 +14,9 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
+
 import org.springframework.security.web.AuthenticationEntryPoint;
+
 @Configuration
 public class SecurityConfig {
 
@@ -41,6 +43,7 @@ public class SecurityConfig {
                 """);
         };
     }
+
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http
@@ -61,14 +64,24 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
+                        // Public authentication endpoints
                         .requestMatchers(
                                 "/api/users/login",
                                 "/api/users/register"
                         ).permitAll()
 
+                        // Swagger / OpenAPI
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**"
+                        ).permitAll()
+
+                        // CORS preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**")
                         .permitAll()
 
+                        // Everything else requires JWT
                         .anyRequest().authenticated()
                 )
 

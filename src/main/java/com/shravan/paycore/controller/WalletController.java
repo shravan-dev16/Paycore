@@ -1,9 +1,6 @@
 package com.shravan.paycore.controller;
 
-import com.shravan.paycore.dto.DepositRequest;
-import com.shravan.paycore.dto.TransferRequest;
-import com.shravan.paycore.dto.WalletResponse;
-import com.shravan.paycore.dto.WithdrawRequest;
+import com.shravan.paycore.dto.*;
 import com.shravan.paycore.service.WalletService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +10,14 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/wallet")
 public class WalletController {
 
+    @GetMapping("/{userId}/consistency")
+    public ResponseEntity<WalletConsistencyResponse> checkWalletConsistency(
+            @PathVariable Long userId
+    ) {
+        return ResponseEntity.ok(
+                walletService.checkWalletConsistency(userId)
+        );
+    }
     private final WalletService walletService;
 
     public WalletController(WalletService walletService) {
