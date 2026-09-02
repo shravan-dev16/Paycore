@@ -12,12 +12,32 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: paycore
+          MYSQL_ROOT_PASSWORD: qwerty123
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -pqwerty123"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DB_URL: jdbc:mysql://127.0.0.1:3306/paycore
+      DB_USERNAME: root
+      DB_PASSWORD: qwerty123
+      JWT_SECRET: ci-test-secret
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
